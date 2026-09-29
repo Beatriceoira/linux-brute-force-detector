@@ -1,0 +1,44 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Generated reports
+brute_force_report.json
+tests/*_report.json
+
+# Logs — never commit real system authentication logs
+*.log
+*.log.*
+auth.log
+auth.log.*
+*.gz
+
+# Test/runtime output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE / editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python build/package files
+build/
+dist/
+*.egg-info/
