@@ -299,11 +299,12 @@ class BruteForceDetector:
 
     def _sliding_window_check(self, ip: str,
                                evs: List[LogonFailureEvent]) -> List[BruteForceAlert]:
+        # Classify each source/window once. Password spraying takes precedence
+        # over ordinary brute force when enough distinct accounts are targeted.
         alerts = []
         n = len(evs)
         left = 0
-        flagged_brute = False
-        flagged_spray = False
+        first_brute_alert = None
 
         for right in range(n):
             while evs[right].time - evs[left].time > self.window:
@@ -311,28 +312,32 @@ class BruteForceDetector:
 
             window_events = evs[left:right + 1]
             count = len(window_events)
-            distinct_accounts = {e.target_user for e in window_events if e.target_user}
+            distinct_accounts = {
+                e.target_user for e in window_events if e.target_user
+            }
 
-            if count >= self.threshold and not flagged_brute:
-                alerts.append(BruteForceAlert(
-                    source_ip=ip, alert_type="brute_force",
-                    first_seen=window_events[0].time, last_seen=window_events[-1].time,
+            if len(distinct_accounts) >= self.spray_distinct_accounts:
+                return [BruteForceAlert(
+                    source_ip=ip,
+                    alert_type="password_spray",
+                    first_seen=window_events[0].time,
+                    last_seen=window_events[-1].time,
                     attempt_count=count,
                     targeted_accounts=[e.target_user for e in window_events],
-                ))
-                flagged_brute = True
+                )]
 
-            if len(distinct_accounts) >= self.spray_distinct_accounts and not flagged_spray:
-                alerts.append(BruteForceAlert(
-                    source_ip=ip, alert_type="password_spray",
-                    first_seen=window_events[0].time, last_seen=window_events[-1].time,
+            if count >= self.threshold and first_brute_alert is None:
+                first_brute_alert = BruteForceAlert(
+                    source_ip=ip,
+                    alert_type="brute_force",
+                    first_seen=window_events[0].time,
+                    last_seen=window_events[-1].time,
                     attempt_count=count,
                     targeted_accounts=[e.target_user for e in window_events],
-                ))
-                flagged_spray = True
+                )
 
-            if flagged_brute and flagged_spray:
-                break
+        if first_brute_alert is not None:
+            alerts.append(first_brute_alert)
 
         return alerts
 
